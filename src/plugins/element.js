@@ -3,7 +3,8 @@ import {
   ElForm, 
   ElFormItem, 
   ElInput,
-  ElIcon 
+  ElIcon,
+  ElMessage 
 } from 'element-plus'
 
 export default (app) => {
@@ -12,4 +13,5 @@ export default (app) => {
   app.use(ElFormItem)
   app.use(ElInput)
   app.use(ElIcon)
+  app.provide("message", ElMessage)
 }

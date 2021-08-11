@@ -51,7 +51,9 @@ export default {
   name: "Login",
   setup() {
     // inject provided axios
-    const axios = inject("axios")
+    // const axios = inject("axios")
+    const message = inject("message")
+
     // form data model
     const form = reactive({ username: "", password: "" });
 
@@ -99,8 +101,11 @@ export default {
       formRef.value.validate(async (valid) => {
         // if(!valid) return;
         console.log("valid:", valid)
-        const resp = await axios.get('https://jsonplaceholder.typicode.com/todos/1')
-        console.log(resp)
+        // const resp = await axios.get('https://jsonplaceholder.typicode.com/todos/1')
+        message({
+          type:"success",
+          message: "login success"
+        })
       })
     }
     // focus password input
