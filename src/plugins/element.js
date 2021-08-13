@@ -8,7 +8,10 @@ import {
   ElContainer,
   ElHeader,
   ElAside,
-  ElMain 
+  ElMain,
+  ElMenu,
+  ElSubmenu,
+  ElMenuItem 
 } from 'element-plus'
 
 export default (app) => {
@@ -22,4 +25,7 @@ export default (app) => {
   app.use(ElAside)
   app.use(ElHeader)
   app.use(ElMain)
+  app.use(ElMenu)
+  app.use(ElSubmenu)
+  app.use(ElMenuItem)
 }
