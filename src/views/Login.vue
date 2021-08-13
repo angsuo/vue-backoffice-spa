@@ -107,6 +107,7 @@ export default {
         // resp will be {...data:{}}
         const {
           data: {
+            data,
             meta: { status },
           },
         } = await axios.post("login", form);
@@ -119,7 +120,7 @@ export default {
           });
 
           // store authentication token in session storage
-          window.sessionStorage.setItem("token", "iogrqngoerignrqeognrqgon");
+          window.sessionStorage.setItem("token", data.token);
 
           // redirect to "/home"
           router.push("/home");
