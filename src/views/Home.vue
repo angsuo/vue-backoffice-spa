@@ -10,40 +10,84 @@
       ></el-header
     >
     <el-container>
-      <el-aside width="200px">
+      <el-aside :width="collapsed ? '64px' : '200px'">
+        <!-- Collapse button -->
+        <div class="collapsable-menu" @click="collapsed = !collapsed">|||</div>
         <el-menu
           background-color="#333744"
           text-color="#fff"
-          active-text-color="#ffd04b"
+          active-text-color="#409eff"
+          :unique-opened='true'
+          :collapse='collapsed'
+          :collapse-transition='false'
+          :default-active="activePath"
+          router
         >
-          <el-submenu index="1">
+          <el-submenu v-for="m1 in menus" :key="m1.id" :index="m1.id + ''">
             <template #title>
-              <i class="el-icon-location"></i>
-              <span>Navigator One</span>
+              <i :class="'el-icon-'+icons[m1.id]"></i>
+              <span>{{ m1.authName }}</span>
             </template>
-            <el-menu-item index="1-4-1"
-              ><i class="el-icon-location"></i>
-              <span>Index One</span></el-menu-item
+            <el-menu-item
+              v-for="m2 in m1.children"
+              :key="m2.id"
+              :index="'/' + m2.path"
+              @click="savePathName('/' + m2.path)"
+              ><i class="el-icon-menu"></i>
+              <span>{{ m2.authName }}</span></el-menu-item
             >
           </el-submenu>
         </el-menu>
       </el-aside>
-      <el-main>Main</el-main>
+      <el-main>
+        <router-view></router-view>
+      </el-main>
     </el-container>
   </el-container>
 </template>
 
 <script>
-import { inject } from "@vue/runtime-core";
+import { inject, onBeforeMount, reactive, ref } from "@vue/runtime-core";
 import { useRouter } from "vue-router";
 export default {
   name: "Home",
   setup() {
     // instantiate router
     const router = useRouter();
-
     // instantiate Element's Message
     const message = inject("message");
+    // instantiate xhr engine
+    const $http = inject("axios");
+    // instantiate menu reactive object
+    const menus = reactive([]);
+    // instantiate menu icons from menu item's id
+    const icons = {
+      '125':'user-solid',
+      '103': 'box',
+      '101': 'shopping-bag-1',
+      '102': 's-order',
+      '145': 's-marketing'
+    }
+    // collapsed menu
+    const collapsed = ref(false)
+    // active path name
+    const activePath = ref("welcome")
+
+    onBeforeMount(async () => {
+      // get menu item's request
+      const {
+        data: {
+          data,
+          meta: { status },
+        },
+      } = await $http.get("menus");
+      if (status !== 200) return logout();
+      menus.push(...data);
+      console.log("Menu items:", menus);
+      
+      // set active path
+      activePath.value = window.sessionStorage.getItem("activePath")
+    });
 
     // logout method
     function logout() {
@@ -52,8 +96,19 @@ export default {
       message({ type: "info", message: "Disconnected" });
     }
 
+    // save pathname to 
+    function savePathName(pName){
+      window.sessionStorage.setItem("activePath", pName)
+      activePath.value = pName
+    }
+
     return {
       logout,
+      menus,
+      icons,
+      collapsed,
+      savePathName,
+      activePath
     };
   },
 };
@@ -89,6 +144,16 @@ export default {
 .el-aside {
   background-color: #333744;
   color: #fff;
+}
+
+.collapsable-menu{
+  background-color: #4a5064;
+  color:#fff;
+  font-size: 10px;
+  line-height: 24px;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  text-align: center;
 }
 
 .el-main {

@@ -3,3 +3,8 @@ html, body, #app {
     margin: 0;
     padding: 0;
 }
+
+/* margin-bot for all el-breadcrumb */
+.el-breadcrumb{
+    margin-bottom: 20px;
+}
