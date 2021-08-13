@@ -47,12 +47,16 @@
 <script>
 import { reactive, ref } from "@vue/reactivity";
 import { inject } from '@vue/runtime-core';
+import {useRouter} from "vue-router"
 export default {
   name: "Login",
   setup() {
     // inject provided axios
     // const axios = inject("axios")
     const message = inject("message")
+
+    // instantiate router hook
+    const router = useRouter()
 
     // form data model
     const form = reactive({ username: "", password: "" });
@@ -102,10 +106,23 @@ export default {
         // if(!valid) return;
         console.log("valid:", valid)
         // const resp = await axios.get('https://jsonplaceholder.typicode.com/todos/1')
+        // success message 
         message({
           type:"success",
           message: "login success"
         })
+
+        // store authentication token in session storage
+        window.sessionStorage.setItem('token', 'iogrqngoerignrqeognrqgon')
+
+        // redirect to "/home"
+        router.push("/home")
+
+        // error message
+        /* message({
+          type:"error",
+          message: "Invalid username and/or password"
+        }) */
       })
     }
     // focus password input
