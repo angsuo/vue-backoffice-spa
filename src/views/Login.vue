@@ -36,7 +36,7 @@
         </el-form-item>
         <!-- buttons -->
         <el-form-item>
-          <el-button type="primary" @click='login'>Login</el-button>
+          <el-button type="primary" @click="login">Login</el-button>
           <el-button type="info" @click="resetFields">Clear Fields</el-button>
         </el-form-item>
       </el-form>
@@ -46,24 +46,22 @@
 
 <script>
 import { reactive, ref } from "@vue/reactivity";
-import { inject } from '@vue/runtime-core';
-import {useRouter} from "vue-router"
+import { inject } from "@vue/runtime-core";
+import { useRouter } from "vue-router";
 export default {
   name: "Login",
   setup() {
-    // inject provided axios
-    // const axios = inject("axios")
-    const message = inject("message")
-
+    // inject axios for login http request
+    const axios = inject("axios");
+    // inject ElMessage from element-plus
+    const message = inject("message");
     // instantiate router hook
-    const router = useRouter()
-
+    const router = useRouter();
     // form data model
-    const form = reactive({ username: "", password: "" });
-
+    const form = reactive({ username: "admin", password: "123456" });
     // component refs
-    const formRef = ref(null)
-    const pwdRef = ref(null)
+    const formRef = ref(null);
+    const pwdRef = ref(null);
 
     // form verification rules
     const rules = {
@@ -97,49 +95,66 @@ export default {
 
     // METHODS
     //    Reset fields
-    function resetFields(){
-      formRef.value.resetFields()
+    function resetFields() {
+      formRef.value.resetFields();
     }
     //    Login
-    function login(){
+    function login() {
       formRef.value.validate(async (valid) => {
-        // if(!valid) return;
-        console.log("valid:", valid)
-        // const resp = await axios.get('https://jsonplaceholder.typicode.com/todos/1')
-        // success message 
-        message({
-          type:"success",
-          message: "login success"
-        })
+        // before http request, check for valid form data
+        if (!valid) return;
 
-        // store authentication token in session storage
-        window.sessionStorage.setItem('token', 'iogrqngoerignrqeognrqgon')
+        // resp will be {...data:{}}
+        const {
+          data: {
+            meta: { status },
+          },
+        } = await axios.post("login", form);
 
-        // redirect to "/home"
-        router.push("/home")
+        if (status === 200) {
+          // success message
+          message({
+            type: "success",
+            message: "login success",
+          });
 
-        // error message
-        /* message({
-          type:"error",
-          message: "Invalid username and/or password"
-        }) */
-      })
+          // store authentication token in session storage
+          window.sessionStorage.setItem("token", "iogrqngoerignrqeognrqgon");
+
+          // redirect to "/home"
+          router.push("/home");
+        } else {
+          // show error message
+          message({
+            type: "error",
+            message: "Invalid username and/or password",
+          });
+        }
+      });
     }
     // focus password input
     function validateUsername() {
-      if(!form.password){
+      if (!form.password) {
         // focus the password input
-          pwdRef.value.focus()
-        }else{
+        pwdRef.value.focus();
+      } else {
         // if already entered password, login
-        login()
+        login();
       }
     }
 
-    return { form, rules, resetFields, formRef, login, validateUsername, pwdRef };
+    return {
+      form,
+      rules,
+      resetFields,
+      formRef,
+      login,
+      validateUsername,
+      pwdRef,
+    };
   },
   mounted() {
-    this.$refs.usernameInput.focus()
+    this.$refs.usernameInput.focus();
   },
 };
 </script>
