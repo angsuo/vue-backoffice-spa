@@ -83,7 +83,7 @@ export default {
       } = await $http.get("menus");
       if (status !== 200) return logout();
       menus.push(...data);
-      console.log("Menu items:", menus);
+      // console.log("Menu items:", menus);
       
       // set active path
       activePath.value = window.sessionStorage.getItem("activePath")
