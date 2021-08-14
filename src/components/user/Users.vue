@@ -1,4 +1,5 @@
 <template>
+  <!-- horizontal navigator -->
   <el-breadcrumb separator-class="el-icon-arrow-right">
     <el-breadcrumb-item :to="{ path: '/welcome' }" @click="setPath"
       >home</el-breadcrumb-item
@@ -6,6 +7,7 @@
     <el-breadcrumb-item>Manage users</el-breadcrumb-item>
     <el-breadcrumb-item>Users list</el-breadcrumb-item>
   </el-breadcrumb>
+  <!-- Users table container -->
   <el-card>
     <!-- Search users & create user -->
     <el-row :gutter="20">
@@ -23,7 +25,7 @@
           </template> </el-input
       ></el-col>
       <el-col :span="4"
-        ><el-button type="primary" @click="showAddUser = true"
+        ><el-button type="primary" @click="showAddFormDialog = true"
           >Add User</el-button
         ></el-col
       >
@@ -34,8 +36,8 @@
       <el-table-column prop="username" label="Name"> </el-table-column>
       <el-table-column prop="email" label="Email"> </el-table-column>
       <el-table-column prop="mobile" label="Phone"> </el-table-column>
-      <el-table-column prop="role_name" label="role"> </el-table-column>
-      <el-table-column label="active">
+      <el-table-column prop="role_name" label="Role"> </el-table-column>
+      <el-table-column label="Active">
         <template #default="scope">
           <el-switch
             v-model="scope.row.mg_state"
@@ -46,18 +48,21 @@
       </el-table-column>
       <el-table-column label="Action" width="180px">
         <template #default="scope">
+          <!-- edit user's email/phone -->
           <el-button
             type="primary"
             icon="el-icon-edit"
             size="mini"
-            @click="handleEdit(scope.row.id)"
+            @click="showEditUserForm(scope.row)"
           ></el-button>
+          <!-- delete user -->
           <el-button
             type="danger"
             icon="el-icon-delete"
             size="mini"
-            @click="handleDelete(scope.row.id)"
+            @click="deleteUser(scope.row.id)"
           ></el-button>
+          <!-- edit user's role -->
           <el-tooltip
             class="item"
             effect="dark"
@@ -69,7 +74,7 @@
               type="warning"
               icon="el-icon-setting"
               size="mini"
-              @click="handleRole(scope.row.id)"
+              @click="toggleRoleEditDialog(scope.row)"
             ></el-button>
           </el-tooltip>
         </template>
@@ -87,7 +92,13 @@
     >
     </el-pagination>
   </el-card>
-  <el-dialog title="Add user" v-model="showAddUser" width="50%" @close="resetForm">
+  <!-- Add user dialog -->
+  <el-dialog
+    title="Add user"
+    v-model="showAddFormDialog"
+    width="50%"
+    @close="resetAddForm"
+  >
     <el-form
       :model="addFormInputs"
       :rules="addFormRules"
@@ -109,8 +120,33 @@
     </el-form>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="showAddUser = false">Cancel</el-button>
+        <el-button @click="showAddFormDialog = false">Cancel</el-button>
         <el-button type="primary" @click="addUser">Add</el-button>
+      </span>
+    </template>
+  </el-dialog>
+  <!-- Edit user dialog -->
+  <el-dialog title="Edit user" v-model="showEditFormDialog" width="50%">
+    <el-form
+      :model="editFormInputs"
+      :rules="editFormRules"
+      ref="editFormRef"
+      label-width="90px"
+    >
+      <el-form-item label="Username" prop="username"
+        ><el-input v-model="editFormInputs.username" disabled></el-input
+      ></el-form-item>
+      <el-form-item label="Email" prop="email"
+        ><el-input v-model="editFormInputs.email"></el-input
+      ></el-form-item>
+      <el-form-item label="Phone" prop="mobile"
+        ><el-input v-model="editFormInputs.mobile"></el-input
+      ></el-form-item>
+    </el-form>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="showEditFormDialog = false">Cancel</el-button>
+        <el-button type="primary" @click="editUser">Confirm</el-button>
       </span>
     </template>
   </el-dialog>
@@ -132,66 +168,103 @@ export default {
       userList: [],
       total: 0,
     });
-    const addFormInputs = reactive({
-      username: "",
-      password: "",
-      email: "",
-      mobile: "",
-    });
-    const addFormRules = {
-      username: [
-        {
-          required: true,
-          message: "Please enter a username",
-          trigger: "blur",
-        },
-        {
-          min: 3,
-          max: 12,
-          message: "Username should be between 3 and 12 chars.",
-          trigger: "blur",
-        },
-      ],
-      password: [
-        {
-          required: true,
-          message: "Please create a password",
-          trigger: "blur",
-        },
-        {
-          min: 3,
-          max: 12,
-          message: "Password should be between 3 and 12 chars.",
-          trigger: "blur",
-        },
-      ],
-      email: [
-        {
-          required: true,
-          message: "Please enter email",
-          trigger: "blur",
-        },
-        {
-          validator: emailValidator,
-          trigger: 'blur'
-        }
-      ],
-      mobile: [
-        {
-          required: true,
-          message: "Please enter a valid mobile phone number",
-          trigger: "blur",
-        },
-        {
-          validator: phoneValidator, 
-          trigger: 'blur'
-        }
-      ],
-    };
-    const addFormRef = ref(null)
-    const showAddUser = ref(false);
     const $http = inject("axios");
     const $message = inject("message");
+    const $confirm = inject("confirm");
+    const addUserData = reactive({
+      addFormRef: ref(null),
+      addFormRules: {
+        username: [
+          {
+            required: true,
+            message: "Please enter a username",
+            trigger: "blur",
+          },
+          {
+            min: 3,
+            max: 12,
+            message: "Username should be between 3 and 12 chars.",
+            trigger: "blur",
+          },
+        ],
+        password: [
+          {
+            required: true,
+            message: "Please create a password",
+            trigger: "blur",
+          },
+          {
+            min: 3,
+            max: 12,
+            message: "Password should be between 3 and 12 chars.",
+            trigger: "blur",
+          },
+        ],
+        email: [
+          {
+            required: true,
+            message: "Please enter email",
+            trigger: "blur",
+          },
+          {
+            validator: emailValidator,
+            trigger: "blur",
+          },
+        ],
+        mobile: [
+          {
+            required: true,
+            message: "Please enter a valid mobile phone number",
+            trigger: "blur",
+          },
+          {
+            validator: phoneValidator,
+            trigger: "blur",
+          },
+        ],
+      },
+      addFormInputs: {
+        username: "",
+        password: "",
+        email: "",
+        mobile: "",
+      },
+      showAddFormDialog: false,
+    });
+    const editUserData = reactive({
+      editFormRef: ref(null),
+      editFormRules: {
+        email: [
+          {
+            required: true,
+            message: "Please enter email",
+            trigger: "blur",
+          },
+          {
+            validator: emailValidator,
+            trigger: "blur",
+          },
+        ],
+        mobile: [
+          {
+            required: true,
+            message: "Please enter a valid mobile phone number",
+            trigger: "blur",
+          },
+          {
+            validator: phoneValidator,
+            trigger: "blur",
+          },
+        ],
+      },
+      editFormInputs: {
+        username: "",
+        email: "",
+        mobile: "",
+      },
+      showEditFormDialog: false,
+      editingUserId: null,
+    });
 
     // lifecycle hooks
     onBeforeMount(() => {
@@ -210,18 +283,6 @@ export default {
       // log res.data
       userData.userList = [...res.data.users];
       userData.total = res.data.total;
-    }
-
-    function handleEdit(id) {
-      console.log("editing user of id:", id);
-    }
-
-    function handleDelete(id) {
-      console.log("deleting user of id:", id);
-    }
-
-    function handleRole(id) {
-      console.log("editing user of id:", id, "'s role");
     }
 
     function handleSizeChange(newSize) {
@@ -248,36 +309,105 @@ export default {
       $message({ type: "success", message: "Changed user's state" });
     }
 
-    function emailValidator(rule, value, next){
-      const regEmail = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-      if(regEmail.test(value)) return next()
-      next(new Error("Please enter a valid email."))
+    function emailValidator(rule, value, next) {
+      const regEmail =
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+      if (regEmail.test(value)) return next();
+      next(new Error("Please enter a valid email."));
     }
 
-    function phoneValidator(rule, value, next){
-      const regMobile = /^1[34578]\d{9}$/
-      if(regMobile.test(value)) return next()
-      next(new Error("Please enter a valid phone."))
+    function phoneValidator(rule, value, next) {
+      const regMobile = /^1[34578]\d{9}$/;
+      if (regMobile.test(value)) return next();
+      next(new Error("Please enter a valid phone."));
     }
 
-    function resetForm(){
-      addFormRef.value.resetFields()
+    function resetAddForm() {
+      addUserData.addFormRef.resetFields();
     }
 
-    function addUser(){
-      addFormRef.value.validate(async valid =>{
-        if(!valid) return
+    function addUser() {
+      addUserData.addFormRef.validate(async (valid) => {
+        if (!valid) return;
         // add user to db
-        const {data:res} = await $http.post('users', addFormInputs)
+        const { data: res } = await $http.post(
+          "users",
+          addUserData.addFormInputs
+        );
         // check for error
-        if(res.meta.status !== 201) return $message({type: "error", message: res.meta.msg})
+        if (res.meta.status !== 201)
+          return $message({ type: "error", message: res.meta.msg });
         // show status msg
-        $message({type:"success", message: "New user created!"})
+        $message({ type: "success", message: "New user created!" });
         // reset form
-        resetForm()
+        resetAddForm();
         // close dialog
-        showAddUser.value = false
+        addUserData.showAddFormDialog = false;
+        // search for users again
+        searchUsers();
+      });
+    }
+
+    function showEditUserForm(user) {
+      // set editUserData's datas with passed value
+      editUserData.editFormInputs.username = user.username;
+      editUserData.editFormInputs.email = user.email;
+      editUserData.editFormInputs.mobile = user.mobile;
+      editUserData.editingUserId = user.id;
+      editUserData.showEditFormDialog = true;
+    }
+
+    function editUser() {
+      editUserData.editFormRef.validate(async (valid) => {
+        if (!valid) return;
+        // call edit user infos' API
+        const { data: res } = await $http.put(
+          `users/${editUserData.editingUserId}`,
+          {
+            id: editUserData.editingUserId,
+            email: editUserData.editFormInputs.email,
+            mobile: editUserData.editFormInputs.mobile,
+          }
+        );
+        // check for error
+        if (res.meta.status !== 200)
+          return $message({ type: "error", message: res.meta.msg });
+        // show status msg
+        $message({ type: "success", message: "User successfully edited" });
+        // close dialog
+        editUserData.showEditFormDialog = false;
+        // call API to see changes
+        searchUsers();
+      });
+    }
+
+    function deleteUser(userId) {
+      $confirm("This will permanently delete the user. Continue?", "Warning", {
+        confirmButtonText: "Delete",
+        cancelButtonText: "Cancel",
+        type: "warning",
       })
+        .then(async () => {
+          // call the API to delete user
+          const { data: res } = await $http.delete(`users/${userId}`, {
+            id: userId,
+          });
+          if (res.meta.status !== 200)
+            return $message({ type: "error", message: res.meta.msg });
+          // re-fetch users
+          searchUsers()
+          // show deletion complete message
+          $message({
+            type: "warning",
+            message: "Successfully deleted user",
+          });
+        })
+        .catch(() => {
+          $message({
+            type: "info",
+            message: "Delete canceled",
+          });
+        });
     }
 
     return {
@@ -285,18 +415,16 @@ export default {
       ...toRefs(queryInfos),
       searchUsers,
       ...toRefs(userData),
-      handleEdit,
-      handleDelete,
-      handleRole,
       handleSizeChange,
       handleCurrentChange,
       handleUserStateChanged,
-      showAddUser,
-      addFormInputs,
-      addFormRules,
-      addFormRef,
-      resetForm,
-      addUser
+      ...toRefs(addUserData),
+      resetAddForm,
+      addUser,
+      ...toRefs(editUserData),
+      showEditUserForm,
+      editUser,
+      deleteUser
     };
   },
   mounted() {
