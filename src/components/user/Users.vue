@@ -381,33 +381,33 @@ export default {
       });
     }
 
-    function deleteUser(userId) {
-      $confirm("This will permanently delete the user. Continue?", "Warning", {
-        confirmButtonText: "Delete",
-        cancelButtonText: "Cancel",
+    async function deleteUser(userId) {
+      const confirmDelete = await $confirm(
+        "This will permanently delete the user. Continue?",
+        "Delete this user?",
+        {
+          confirmButtonText: "Delete",
+          cancelButtonText: "Cancel",
+          type: "warning",
+        }
+      ).catch((e) => e);
+
+      if (confirmDelete !== "confirm")
+        return $message({ type: "info", message: "Operation canceled." });
+
+      // call the API to delete user
+      const { data: res } = await $http.delete(`users/${userId}`, {
+        id: userId,
+      });
+      if (res.meta.status !== 200)
+        return $message({ type: "error", message: `Error: ${res.meta.msg}` });
+      // re-fetch users
+      searchUsers();
+      // show deletion complete message
+      $message({
         type: "warning",
-      })
-        .then(async () => {
-          // call the API to delete user
-          const { data: res } = await $http.delete(`users/${userId}`, {
-            id: userId,
-          });
-          if (res.meta.status !== 200)
-            return $message({ type: "error", message: res.meta.msg });
-          // re-fetch users
-          searchUsers()
-          // show deletion complete message
-          $message({
-            type: "warning",
-            message: "Successfully deleted user",
-          });
-        })
-        .catch(() => {
-          $message({
-            type: "info",
-            message: "Delete canceled",
-          });
-        });
+        message: "Successfully deleted user",
+      });
     }
 
     return {
@@ -424,7 +424,7 @@ export default {
       ...toRefs(editUserData),
       showEditUserForm,
       editUser,
-      deleteUser
+      deleteUser,
     };
   },
   mounted() {
