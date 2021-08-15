@@ -25,7 +25,9 @@ import {
   ElDialog,
   ElMessageBox,
   ElTag,
-  ElTree
+  ElTree,
+  ElSelect,
+  ElOption
 } from 'element-plus'
 
 export default (app) => {
@@ -56,4 +58,6 @@ export default (app) => {
   app.provide("confirm", ElMessageBox.confirm)
   app.use(ElTag)
   app.use(ElTree)
+  app.use(ElSelect)
+  app.use(ElOption)
 }

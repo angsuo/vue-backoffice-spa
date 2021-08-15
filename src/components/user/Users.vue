@@ -74,7 +74,7 @@
               type="warning"
               icon="el-icon-setting"
               size="mini"
-              @click="toggleRoleEditDialog(scope.row)"
+              @click="showEditUserRoleDialog(scope.row)"
             ></el-button>
           </el-tooltip>
         </template>
@@ -147,6 +147,28 @@
       <span class="dialog-footer">
         <el-button @click="showEditFormDialog = false">Cancel</el-button>
         <el-button type="primary" @click="editUser">Confirm</el-button>
+      </span>
+    </template>
+  </el-dialog>
+  <!-- [Dialog] Edit user's Role -->
+  <el-dialog title="Edit role" v-model="showEditUserRole" width="50%" @close="clearRoleSelection">
+    <div>
+      <h3>User: {{ selectedEditUserRole.username }}</h3>
+      <p>Current role: {{ selectedEditUserRole.role_name }}</p>
+      <el-select v-model="selectedNewRoleId" placeholder="Select new role">
+        <el-option
+          v-for="role in availableRoles"
+          :key="role.id"
+          :label="role.roleName"
+          :value="role.id"
+        >
+        </el-option>
+      </el-select>
+    </div>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="showEditUserRole = false">Cancel</el-button>
+        <el-button type="primary" @click="saveUserRole">Confirm</el-button>
       </span>
     </template>
   </el-dialog>
@@ -264,6 +286,12 @@ export default {
       },
       showEditFormDialog: false,
       editingUserId: null,
+    });
+    const editUserRoleData = reactive({
+      showEditUserRole: false,
+      selectedEditUserRole: {},
+      availableRoles: [],
+      selectedNewRoleId:null
     });
 
     // lifecycle hooks
@@ -410,6 +438,37 @@ export default {
       });
     }
 
+    async function showEditUserRoleDialog(user) {
+      // save new current user's infos (id, username, role)
+      editUserRoleData.selectedEditUserRole = user;
+      // fetch all the available role from endpoint
+      const { data: res } = await $http.get("roles");
+      if (res.meta.status !== 200)
+        return $message.error(`Error: ${res.meta.msg}`);
+
+      // save all roles available
+      editUserRoleData.availableRoles = res.data;
+
+      // toggle show dialog
+      editUserRoleData.showEditUserRole = true;
+    }
+
+    async function saveUserRole(){
+      // API endpoint put request to 'users/:id/role'
+      const {data:res} = await $http.put(`users/${editUserRoleData.selectedEditUserRole.id}/role`, {rid:editUserRoleData.selectedNewRoleId})
+      if(res.meta.status !== 200) return $message.error(`Error: ${res.meta.msg}`)
+      // tell operation success
+      $message.success("Saved new user's role!")
+      // re-fetch users list
+      searchUsers()
+      // close dialog
+      editUserRoleData.showEditUserRole = false
+    }
+
+    function clearRoleSelection(){
+      editUserRoleData.selectedNewRoleId = null
+    }
+
     return {
       setPath,
       ...toRefs(queryInfos),
@@ -425,6 +484,10 @@ export default {
       showEditUserForm,
       editUser,
       deleteUser,
+      showEditUserRoleDialog,
+      ...toRefs(editUserRoleData),
+      clearRoleSelection,
+      saveUserRole
     };
   },
   mounted() {
