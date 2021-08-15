@@ -22,28 +22,46 @@
       <el-table-column type="expand">
         <template #default="scope">
           <el-row
-            :class="['bd-bot', i1 === 0 ? 'bd-top' : '']"
+            :class="['bd-bot', 'vcenter', i1 === 0 ? 'bd-top' : '']"
             v-for="(p1, i1) in scope.row.children"
             :key="p1.id"
           >
             <!-- level 1 permissions -->
             <el-col :span="5">
-              <el-tag closable @close="console.log('closing')">{{
+              <el-tag closable @close="removeRight(scope.row, p1.id, { i1 })">{{
                 p1.authName
               }}</el-tag>
-                <caret-right style="width:1em; height:1em; margin-left:3px;" />
+              <caret-right style="width: 1em; height: 1em; margin-left: 3px" />
             </el-col>
             <!-- level 2 & 3 permissions -->
             <el-col :span="19">
               <!-- level 2 permissions -->
-              <el-row :class="[i2 === 0 ? '': 'bd-top']" v-for="(p2, i2) in p1.children" :key="p2.id">
+              <el-row
+                :class="['vcenter', i2 === 0 ? '' : 'bd-top']"
+                v-for="(p2, i2) in p1.children"
+                :key="p2.id"
+              >
                 <el-col :span="6">
-                  <el-tag type="success" closable>{{p2.authName}}</el-tag>
-                  <caret-right style="width:1em; height:1em; margin-left:3px;" />
+                  <el-tag
+                    type="success"
+                    closable
+                    @close="removeRight(scope.row, p2.id, { i1, i2 })"
+                    >{{ p2.authName }}</el-tag
+                  >
+                  <caret-right
+                    style="width: 1em; height: 1em; margin-left: 3px"
+                  />
                 </el-col>
                 <!-- level 3 permissions -->
                 <el-col :span="18">
-                  <el-tag type="warning" v-for="(p3) in p2.children" :key="p3.id" closable>{{p3.authName}}</el-tag>
+                  <el-tag
+                    type="warning"
+                    v-for="p3 in p2.children"
+                    :key="p3.id"
+                    closable
+                    @close="removeRight(scope.row, p3.id, { i1, i2, i3 })"
+                    >{{ p3.authName }}</el-tag
+                  >
                 </el-col>
               </el-row>
             </el-col>
@@ -131,15 +149,37 @@
       </span>
     </template>
   </el-dialog>
+  <!-- [Dialog] manage role permissions -->
+  <el-dialog title="Edit Permissions" v-model="showEditPermissions" width="50%" @close="clearCurrentRolePermissions">
+    <!-- Permission Tree zone -->
+    <el-tree
+      :data="permissionTree"
+      :props="permissionTreeProps"
+      default-expand-all
+      show-checkbox
+      node-key="id"
+      :default-checked-keys="currentRolePermissions"
+      ref="permissionTreeRef"
+    ></el-tree>
+    <!-- Confirmation zone -->
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="showEditPermissions = false">Cancel</el-button>
+        <el-button type="primary" @click="confirmEditPermissions"
+          >Confirm</el-button
+        >
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script>
 import { reactive, ref, toRefs } from "@vue/reactivity";
 import { inject, onBeforeMount } from "@vue/runtime-core";
-import {CaretRight} from "@element-plus/icons"
+import { CaretRight } from "@element-plus/icons";
 export default {
   name: "Roles",
-  components:{CaretRight},
+  components: { CaretRight },
   setup() {
     // Data
     const thisData = reactive({
@@ -198,6 +238,17 @@ export default {
         ],
       },
     });
+    const editPermissionsData = reactive({
+      permissionTree: [],
+      permissionTreeProps: {
+        label: "authName",
+        children: "children",
+      },
+      showEditPermissions: false,
+      currentRolePermissions: [],
+      permissionTreeRef:ref(null),
+      currentRoleId:null
+    });
     // Injectables
     const $http = inject("axios");
     const $message = inject("message");
@@ -252,8 +303,22 @@ export default {
       });
     }
 
-    function editRolePermissions(role) {
-      console.log("Editing permissions of", role);
+    async function editRolePermissions(role) {
+      // Fetch all permissions as a tree
+      const { data: res } = await $http.get("rights/tree");
+      if (res.meta.status !== 200)
+        return $message.error(`Error: ${res.meta.msg}`);
+      // Populate component data of permissions
+      editPermissionsData.permissionTree = res.data;
+
+      // get this role's checked permissions
+      getRolePermissions(role)
+
+      // save current role's id
+      editPermissionsData.currentRoleId = role.id
+
+      // Show Dialog
+      editPermissionsData.showEditPermissions = true;
     }
 
     function addRole() {
@@ -300,6 +365,80 @@ export default {
       });
     }
 
+    async function removeRight(role, rightId, { i1, i2, i3 }) {
+      const confirmed = await $confirm(
+        "This will permanently delete the permission. Continue?",
+        "Delete this permission?",
+        {
+          confirmButtonText: "Delete",
+          cancelButtonText: "Cancel",
+          type: "warning",
+        }
+      ).catch((e) => e);
+
+      if (confirmed !== "confirm")
+        return $message.info("canceled permission deletion");
+
+      // XHR to API endpoint to delete right
+      const { data: res } = await $http.delete(
+        `roles/${role.id}/rights/${rightId}`
+      );
+      console.log("Deletion API res:", res);
+      if (res.meta.status !== 200)
+        return $message.error(`Error: ${res.meta.msg}`);
+
+      // when deleted, avoid re-fetch the roles because it'll unmount entire table
+      // and therefore the data row would collapse(bad UX)
+      // since returned data from deletion is the updated role's permissions
+      // we just have replace it's children by res.data
+      role.children = res.data; // !TODO: fix whole expandable to re-render
+      // but since in Vue3 all are proxied, it'll cause the rerender of the entire DOM
+      // so we'll change only the necessary
+      //    1. select the changed permission given i1, i2, i3
+      //    2. delete in the role.children[i1].children[i2].children[i3]
+      /* if(!Number.isNaN(i3)){
+        role.children[i1].children[i2].children = role.children[i1].children[i2].children.filter(({id}) => id!== rightId)
+      }else if(!Number.isNan(i2)){
+        role.children[i1].children = role.children[i1].children.filter(({id}) => id !== rightId)
+      }else{
+        role.children = role.children.filter(({id})=> id !== rightId)
+      } */
+    }
+
+    async function confirmEditPermissions() {
+      // ElTree method to get a tree's checked ids: getCheckedKeys
+      // ElTree's method to get a tree's half-checked ids: getHalfCheckedKeys
+      const checkedArr = [
+        ...editPermissionsData.permissionTreeRef.getCheckedKeys(),
+        ...editPermissionsData.permissionTreeRef.getHalfCheckedKeys()
+      ]
+      // request API endpoint : 'roles/:roleId/rights'
+      const {data: res} = await $http.post(`roles/${editPermissionsData.currentRoleId}/rights`, {rids:checkedArr})
+      // check if res.meta.status is 200 (OK)
+      if(res.meta.status !== 200) return $message.error(`Error: ${res.meta.msg}`)
+      // Now that permissions are updated for the current role
+      //  1. tell user with an ElMessage 
+      $message.success("Successfully updated role's permission!")
+      //  2. re-fetch all role's data
+      fetchRoles()
+      //  3. close dialog
+      editPermissionsData.showEditPermissions = false
+    }
+
+    function getRolePermissions(role){
+      // if the current node has children, recursively itself for each child
+      if(role.children){
+        return role.children.forEach(c => getRolePermissions(c))
+      }
+      // at the last node level (leafs) push it's id to permissions array
+      editPermissionsData.currentRolePermissions.push(role.id)
+    }
+
+    function clearCurrentRolePermissions(){
+      editPermissionsData.currentRolePermissions = []
+      editPermissionsData.showEditPermissions = false
+    }
+
     return {
       ...toRefs(thisData),
       editRoleInfos,
@@ -309,6 +448,10 @@ export default {
       ...toRefs(editRoleData),
       addRole,
       editRole,
+      removeRight,
+      confirmEditPermissions,
+      ...toRefs(editPermissionsData),
+      clearCurrentRolePermissions
     };
   },
 };
@@ -323,5 +466,9 @@ export default {
 }
 .bd-bot {
   border-bottom: 1px solid #eee;
+}
+.vcenter {
+  display: flex;
+  align-items: center;
 }
 </style>

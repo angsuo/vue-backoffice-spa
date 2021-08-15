@@ -24,7 +24,8 @@ import {
   ElPagination,
   ElDialog,
   ElMessageBox,
-  ElTag
+  ElTag,
+  ElTree
 } from 'element-plus'
 
 export default (app) => {
@@ -54,4 +55,5 @@ export default (app) => {
   app.use(ElDialog)
   app.provide("confirm", ElMessageBox.confirm)
   app.use(ElTag)
+  app.use(ElTree)
 }
