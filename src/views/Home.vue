@@ -74,15 +74,23 @@ export default {
     const activePath = ref("welcome")
 
     onBeforeMount(async () => {
-      // get menu item's request
-      const {
-        data: {
-          data,
-          meta: { status },
-        },
-      } = await $http.get("menus");
-      if (status !== 200) return logout();
-      menus.push(...data);
+      const localMenus = JSON.parse(window.localStorage.getItem("menus"))
+      // check if menus are stored in localStorage(only do it to limit redundant API calls)
+      if(!window.localStorage.getItem("menus")){
+        // get menu item's request
+        const {
+          data: {
+            data,
+            meta: { status },
+          },
+        } = await $http.get("menus");
+        if (status !== 200) return logout();
+        // store menus to local storage
+        window.localStorage.setItem("menus", JSON.stringify(data))
+        menus.push(...data);
+      }else{
+        menus.push(...localMenus)
+      }
       // console.log("Menu items:", menus);
       
       // set active path

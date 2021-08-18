@@ -1,7 +1,7 @@
 <template>
   <!-- horizontal navigator -->
   <el-breadcrumb separator-class="el-icon-arrow-right">
-    <el-breadcrumb-item :to="{ path: '/welcome' }" @click="setPath"
+    <el-breadcrumb-item :to="{ path: '/welcome' }"
       >home</el-breadcrumb-item
     >
     <el-breadcrumb-item>Permissions</el-breadcrumb-item>

@@ -27,7 +27,8 @@ import {
   ElTag,
   ElTree,
   ElSelect,
-  ElOption
+  ElOption,
+  ElCascader
 } from 'element-plus'
 
 export default (app) => {
@@ -60,4 +61,5 @@ export default (app) => {
   app.use(ElTree)
   app.use(ElSelect)
   app.use(ElOption)
+  app.use(ElCascader)
 }
