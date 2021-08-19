@@ -53,14 +53,14 @@
         <template #default="scope">
           <el-button
             class="el-icon-edit"
-            @click="console.log('Editing', scope.row)"
+            @click="showEditCategory(scope.row)"
             size="mini"
             type="primary"
             >Edit</el-button
           >
           <el-button
             class="el-icon-delete"
-            @click="console.log('Deleting', scope.row)"
+            @click="confirmDeleteCategory(scope.row.cat_id)"
             size="mini"
             type="danger"
             >Delete</el-button
@@ -115,6 +115,23 @@
     </template>
   </el-dialog>
   <!-- Edit Category Dialog -->
+  <el-dialog title="New Category" v-model="showEditCategoryDialog" width="50%" @close="clearEditCategoryFields">
+    <el-form
+      ref="editCategoryFormRef"
+      :model="editCategoryInput"
+      :rules="editCategoryFormRules"
+    >
+      <el-form-item label="Category Name:" prop="cat_name">
+        <el-input v-model="editCategoryInput.cat_name" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="showEditCategoryDialog = false">Cancel</el-button>
+        <el-button type="primary" @click="editCategory">Confirm</el-button>
+      </span>
+    </template>
+  </el-dialog>
   <!-- Delete Category Dialog -->
 </template>
 
@@ -122,7 +139,7 @@
 import { reactive, ref, toRefs } from "@vue/reactivity";
 import { inject, onBeforeMount } from "@vue/runtime-core";
 import { CircleCheckFilled, CircleCloseFilled } from "@element-plus/icons";
-import dummyCategories from "../../assets/data/dummyCategories.json";
+// import dummyCategories from "../../assets/data/dummyCategories.json";
 export default {
   name: "Category",
   components: { CircleCloseFilled, CircleCheckFilled },
@@ -156,9 +173,28 @@ export default {
       categoryParents: [],
       parentCategoryCascaderRef:ref(null)
     });
+    const editCategoryData = reactive({
+      editCategoryInput: {
+        cat_id: 0,
+        cat_name: "",
+      },
+      editCategoryFormRules: {
+        cat_name: [
+          {
+            required: true,
+            message: "Please enter a category name",
+            trigger: "blur",
+          },
+        ],
+      },
+      showEditCategoryDialog: false,
+      editCategoryFormRef: ref(null),
+    });
+    
     // injectables
     const $message = inject("message");
     const $http = inject("axios");
+    const $confirm = inject("confirm");
 
     // Lifecycle hooks
     onBeforeMount(async () => {
@@ -166,7 +202,7 @@ export default {
     });
 
     // fetch API for categories
-    /* async function fetchCategories() {
+    async function fetchCategories() {
       // call to API endpoint : GET 'categories'
       const { data: res } = await $http.get("categories", {
         pagesize: categoryTableData.pagesize,
@@ -178,16 +214,16 @@ export default {
       categoryTableData.categoryList = res.data;
       totalCategories.value = res.data.length;
       console.log("Categories:", categoryTableData.categoryList);
-    } */
+    }
 
     // fetch dummyData method
-    async function fetchCategories() {
+    /* async function fetchCategories() {
       categoryTableData.categoryList = dummyCategories.data.slice(
         (categoryTableData.pagenum - 1) * categoryTableData.pagesize,
         categoryTableData.pagenum * categoryTableData.pagesize
       );
       totalCategories.value = dummyCategories.data.length;
-    }
+    } */
 
     // onPageSizeChange handler
     function handlePageSizeChange(newSize) {
@@ -204,10 +240,17 @@ export default {
     // add new category
     async function addCategory() {
       // validate form
-      addCategoryData.addCategoryFormRef.validate(async (valid) => {
-        console.log("New category:", addCategoryData.addCategoryInput);
-        if (!valid) return;
+      addCategoryData.addCategoryFormRef.validate(async (isValid) => {
+        if (!isValid) return;
         // do things
+        const {data: res} = await $http.post("categories", addCategoryData.addCategoryInput)
+        if(res.meta.status !== 201) return $message.error(`Error: ${res.meta.msg}`)
+        // re-fetch data
+        fetchCategories()
+        // show message
+        $message.success("New category created")
+        // close dialog
+        addCategoryData.showAddCategoryDialog = false;
       });
     }
 
@@ -246,6 +289,51 @@ export default {
       addCategoryData.addCategoryInput.cat_pid = 0
     }
 
+    // when press edit category
+    function showEditCategory({cat_id, cat_name}){
+      // store the category's name and id
+      editCategoryData.editCategoryInput.cat_id = cat_id
+      editCategoryData.editCategoryInput.cat_name = cat_name
+      // show Dialog
+      editCategoryData.showEditCategoryDialog = true
+    }
+
+    function editCategory(){
+      editCategoryData.editCategoryFormRef.validate(async isValid => {
+        if(!isValid) return;
+        const {data:res} = await $http.put(`categories/${editCategoryData.editCategoryInput.cat_id}`, {cat_name: editCategoryData.editCategoryInput.cat_name})
+        if(res.meta.status !== 200) return $message.error(`Error: ${res.meta.msg}`)
+        // success message
+        $message.success("Successfully edited category's name")
+        // re-fetch categories
+        fetchCategories()
+        // close dialog
+        editCategoryData.showEditCategoryDialog = false
+      })
+    }
+
+    async function confirmDeleteCategory(id){
+        const confirmed = await $confirm(
+        "This will permanently delete the category. Continue?",
+        "Delete this category?",
+        {
+          confirmButtonText: "Delete",
+          cancelButtonText: "Cancel",
+          type: "warning",
+        }
+      ).catch((e) => e);
+
+      if (confirmed !== "confirm")
+        return $message.info("canceled category deletion");
+      // API call
+      const {data:res} = await $http.delete(`categories/${id}`)
+      if(res.meta.status !== 200) return $message.error(`Error: ${res.meta.msg}`)
+      // announce deletion
+      $message.success("Category successfully deleted")
+      // re-fetch API
+      fetchCategories()
+    }
+
     return {
       ...toRefs(categoryTableData),
       totalCategories,
@@ -255,7 +343,11 @@ export default {
       addCategory,
       openAddCategoryDialog,
       handleSelectCategoryDepth,
-      clearAddCategoryFields
+      clearAddCategoryFields,
+      showEditCategory,
+      ...toRefs(editCategoryData),
+      editCategory,
+      confirmDeleteCategory
     };
   },
 };
