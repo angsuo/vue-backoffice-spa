@@ -28,7 +28,10 @@ import {
   ElTree,
   ElSelect,
   ElOption,
-  ElCascader
+  ElCascader,
+  ElAlert,
+  ElTabs,
+  ElTabPane
 } from 'element-plus'
 
 export default (app) => {
@@ -62,4 +65,7 @@ export default (app) => {
   app.use(ElSelect)
   app.use(ElOption)
   app.use(ElCascader)
+  app.use(ElAlert)
+  app.use(ElTabs)
+  app.use(ElTabPane)
 }

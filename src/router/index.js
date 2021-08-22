@@ -7,6 +7,7 @@ import Users from "../components/user/Users.vue";
 import Rights from "../components/permissions/Rights.vue"
 import Roles from "../components/permissions/Roles.vue"
 import Category from "../components/products/Category.vue"
+import Params from "../components/products/Params.vue"
 
 const routes = [
   // redirect to "/login" on root path
@@ -27,7 +28,8 @@ const routes = [
       { path: "/users", component: Users },
       {path: "/rights", component: Rights},
       {path: "/roles", component: Roles},
-      {path: "/categories", component:Category}
+      {path: "/categories", component:Category},
+      {path:"/params", component: Params}
     ],
   },
 ];

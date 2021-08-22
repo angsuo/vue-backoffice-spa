@@ -18,7 +18,7 @@
       >
     </el-row>
     <!-- Roles table -->
-    <el-table :data="roleList" border stripe>
+    <el-table :data="roleList" border stripe row-key="id" :expand-row-keys="expandedRowKeys" @expand-change="handleExpand">
       <el-table-column type="expand">
         <template #default="scope">
           <el-row
@@ -247,7 +247,8 @@ export default {
       showEditPermissions: false,
       currentRolePermissions: [],
       permissionTreeRef:ref(null),
-      currentRoleId:null
+      currentRoleId:null,
+      expandedRowKeys: []
     });
     // Injectables
     const $http = inject("axios");
@@ -365,7 +366,7 @@ export default {
       });
     }
 
-    async function removeRight(role, rightId, { i1, i2, i3 }) {
+    async function removeRight(role, rightId) {
       const confirmed = await $confirm(
         "This will permanently delete the permission. Continue?",
         "Delete this permission?",
@@ -439,6 +440,18 @@ export default {
       editPermissionsData.showEditPermissions = false
     }
 
+    function handleExpand(rowChanged, expandedRows){
+      // determine if row collapsed or expanded
+      if(expandedRows.findIndex(r => r === rowChanged) !== -1){
+        // the rowChanged is expanded
+        // add new row's id(attr_id)
+        editPermissionsData.expandedRowKeys.push(rowChanged.id)
+      }else{
+        // the rowChanged is collapsed
+        editPermissionsData.expandedRowKeys = editPermissionsData.expandedRowKeys.filter(id => id !== rowChanged.id)
+      }
+    }
+
     return {
       ...toRefs(thisData),
       editRoleInfos,
@@ -451,7 +464,8 @@ export default {
       removeRight,
       confirmEditPermissions,
       ...toRefs(editPermissionsData),
-      clearCurrentRolePermissions
+      clearCurrentRolePermissions,
+      handleExpand
     };
   },
 };
