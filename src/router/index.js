@@ -11,6 +11,7 @@ import Params from "../components/products/Params.vue"
 import List from "../components/products/List.vue"
 import AddProduct from "../components/products/AddProduct.vue"
 import Order from "../components/order/Order.vue"
+import Report from "../components/report/Report.vue"
 
 const routes = [
   // redirect to "/login" on root path
@@ -35,7 +36,8 @@ const routes = [
       {path:"/params", component: Params},
       {path: "/goods", component: List},
       {path: "/goods/add", component: AddProduct},
-      {path: "/orders", component: Order}
+      {path: "/orders", component: Order},
+      {path: "/reports", component: Report}
     ],
   },
 ];
