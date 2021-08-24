@@ -36,7 +36,9 @@ import {
   ElStep,
   ElCheckboxGroup,
   ElCheckbox,
-  ElUpload
+  ElUpload,
+  ElTimeline,
+  ElTimelineItem
 } from 'element-plus'
 
 export default (app) => {
@@ -78,4 +80,6 @@ export default (app) => {
   app.use(ElCheckboxGroup)
   app.use(ElCheckbox)
   app.use(ElUpload)
+  app.use(ElTimeline)
+  app.use(ElTimelineItem)
 }
